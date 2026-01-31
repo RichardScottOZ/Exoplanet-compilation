@@ -12,7 +12,11 @@ This module provides unified access to multiple exoplanet databases:
 import pandas as pd
 import numpy as np
 import requests
-from astroquery.nasa_exoplanet_archive import NasaExoplanetArchive
+try:
+    from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
+except ImportError:
+    # Fallback for older astroquery versions
+    from astroquery.nasa_exoplanet_archive import NasaExoplanetArchive
 from astropy.time import Time
 import warnings
 warnings.filterwarnings('ignore')
@@ -27,6 +31,23 @@ class ExoplanetDataCollector:
         self.oec_data = None
         self.combined_data = None
         
+    def load_demo_data(self):
+        """
+        Load demo data for testing when network access is unavailable.
+        """
+        print("Loading demo data...")
+        try:
+            from demo_data_generator import generate_demo_data
+            demo_df = generate_demo_data(100)
+            
+            # Treat demo data as NASA data for processing
+            self.nasa_data = demo_df
+            print(f"Successfully loaded {len(demo_df)} demo planets")
+            return demo_df
+        except Exception as e:
+            print(f"Error loading demo data: {e}")
+            return None
+    
     def fetch_nasa_exoplanet_archive(self):
         """
         Fetch data from NASA Exoplanet Archive.
@@ -96,26 +117,34 @@ class ExoplanetDataCollector:
         
         # Process NASA data
         if self.nasa_data is not None and len(self.nasa_data) > 0:
+            # Check if this is demo data or real NASA data
+            is_demo = 'data_source' in self.nasa_data.columns
+            
             for _, row in self.nasa_data.iterrows():
-                unified_data.append({
-                    'planet_name': row.get('pl_name', ''),
-                    'host_star': row.get('hostname', ''),
-                    'discovery_method': row.get('discoverymethod', ''),
-                    'discovery_year': row.get('disc_year', np.nan),
-                    'orbital_period_days': row.get('pl_orbper', np.nan),
-                    'planet_radius_jupiter': row.get('pl_radj', np.nan),
-                    'planet_mass_jupiter': row.get('pl_bmassj', np.nan),
-                    'orbital_distance_au': row.get('pl_orbsmax', np.nan),
-                    'eccentricity': row.get('pl_orbeccen', np.nan),
-                    'equilibrium_temp_k': row.get('pl_eqt', np.nan),
-                    'stellar_distance_pc': row.get('sy_dist', np.nan),
-                    'stellar_mass_solar': row.get('st_mass', np.nan),
-                    'stellar_radius_solar': row.get('st_rad', np.nan),
-                    'stellar_temp_k': row.get('st_teff', np.nan),
-                    'ra_deg': row.get('ra', np.nan),
-                    'dec_deg': row.get('dec', np.nan),
-                    'data_source': 'NASA Exoplanet Archive'
-                })
+                if is_demo:
+                    # Demo data already has the right format
+                    unified_data.append(dict(row))
+                else:
+                    # Real NASA data needs mapping
+                    unified_data.append({
+                        'planet_name': row.get('pl_name', ''),
+                        'host_star': row.get('hostname', ''),
+                        'discovery_method': row.get('discoverymethod', ''),
+                        'discovery_year': row.get('disc_year', np.nan),
+                        'orbital_period_days': row.get('pl_orbper', np.nan),
+                        'planet_radius_jupiter': row.get('pl_radj', np.nan),
+                        'planet_mass_jupiter': row.get('pl_bmassj', np.nan),
+                        'orbital_distance_au': row.get('pl_orbsmax', np.nan),
+                        'eccentricity': row.get('pl_orbeccen', np.nan),
+                        'equilibrium_temp_k': row.get('pl_eqt', np.nan),
+                        'stellar_distance_pc': row.get('sy_dist', np.nan),
+                        'stellar_mass_solar': row.get('st_mass', np.nan),
+                        'stellar_radius_solar': row.get('st_rad', np.nan),
+                        'stellar_temp_k': row.get('st_teff', np.nan),
+                        'ra_deg': row.get('ra', np.nan),
+                        'dec_deg': row.get('dec', np.nan),
+                        'data_source': 'NASA Exoplanet Archive'
+                    })
         
         # Process EU data
         if self.eu_data is not None and len(self.eu_data) > 0:
@@ -153,30 +182,33 @@ class ExoplanetDataCollector:
         """
         Add derived columns and enrich the dataset with calculations.
         """
-        if self.combined_data is None:
+        if self.combined_data is None or len(self.combined_data) == 0:
             print("No data to enrich. Run create_unified_schema() first.")
-            return
+            return self.combined_data
         
         print("Enriching dataset with derived values...")
         
         # Convert radius to Earth radii
-        self.combined_data['planet_radius_earth'] = (
-            self.combined_data['planet_radius_jupiter'] * 11.209  # Jupiter radius in Earth radii
-        )
+        if 'planet_radius_jupiter' in self.combined_data.columns:
+            self.combined_data['planet_radius_earth'] = (
+                self.combined_data['planet_radius_jupiter'] * 11.209  # Jupiter radius in Earth radii
+            )
         
         # Convert mass to Earth masses
-        self.combined_data['planet_mass_earth'] = (
-            self.combined_data['planet_mass_jupiter'] * 317.8  # Jupiter mass in Earth masses
-        )
+        if 'planet_mass_jupiter' in self.combined_data.columns:
+            self.combined_data['planet_mass_earth'] = (
+                self.combined_data['planet_mass_jupiter'] * 317.8  # Jupiter mass in Earth masses
+            )
         
         # Calculate density (if we have both mass and radius)
-        volume_jupiter = (4/3) * np.pi * (self.combined_data['planet_radius_jupiter'] ** 3)
-        self.combined_data['density_g_cm3'] = np.where(
-            (self.combined_data['planet_mass_jupiter'] > 0) & 
-            (self.combined_data['planet_radius_jupiter'] > 0),
-            self.combined_data['planet_mass_jupiter'] * 1.898e27 / (volume_jupiter * 1.4313e27),
-            np.nan
-        )
+        if 'planet_mass_jupiter' in self.combined_data.columns and 'planet_radius_jupiter' in self.combined_data.columns:
+            volume_jupiter = (4/3) * np.pi * (self.combined_data['planet_radius_jupiter'] ** 3)
+            self.combined_data['density_g_cm3'] = np.where(
+                (self.combined_data['planet_mass_jupiter'] > 0) & 
+                (self.combined_data['planet_radius_jupiter'] > 0),
+                self.combined_data['planet_mass_jupiter'] * 1.898e27 / (volume_jupiter * 1.4313e27),
+                np.nan
+            )
         
         # Classify planets by size
         def classify_planet_type(radius_earth):
@@ -191,22 +223,25 @@ class ExoplanetDataCollector:
             else:
                 return 'Jupiter-like'
         
-        self.combined_data['planet_type'] = self.combined_data['planet_radius_earth'].apply(
-            classify_planet_type
-        )
+        if 'planet_radius_earth' in self.combined_data.columns:
+            self.combined_data['planet_type'] = self.combined_data['planet_radius_earth'].apply(
+                classify_planet_type
+            )
         
         # Estimate habitable zone distance (simplified)
         # HZ varies with stellar luminosity, roughly 0.95-1.37 AU for Sun-like stars
-        stellar_luminosity = (self.combined_data['stellar_radius_solar'] ** 2) * \
-                            ((self.combined_data['stellar_temp_k'] / 5778) ** 4)
-        self.combined_data['hz_inner_au'] = 0.95 * np.sqrt(stellar_luminosity)
-        self.combined_data['hz_outer_au'] = 1.37 * np.sqrt(stellar_luminosity)
+        if 'stellar_radius_solar' in self.combined_data.columns and 'stellar_temp_k' in self.combined_data.columns:
+            stellar_luminosity = (self.combined_data['stellar_radius_solar'] ** 2) * \
+                                ((self.combined_data['stellar_temp_k'] / 5778) ** 4)
+            self.combined_data['hz_inner_au'] = 0.95 * np.sqrt(stellar_luminosity)
+            self.combined_data['hz_outer_au'] = 1.37 * np.sqrt(stellar_luminosity)
         
         # Check if in habitable zone
-        self.combined_data['in_habitable_zone'] = (
-            (self.combined_data['orbital_distance_au'] >= self.combined_data['hz_inner_au']) &
-            (self.combined_data['orbital_distance_au'] <= self.combined_data['hz_outer_au'])
-        )
+        if 'orbital_distance_au' in self.combined_data.columns and 'hz_inner_au' in self.combined_data.columns:
+            self.combined_data['in_habitable_zone'] = (
+                (self.combined_data['orbital_distance_au'] >= self.combined_data['hz_inner_au']) &
+                (self.combined_data['orbital_distance_au'] <= self.combined_data['hz_outer_au'])
+            )
         
         # Calculate galactic coordinates (simplified - would need proper coordinate transformation)
         # For now, just convert RA/Dec to cartesian
@@ -285,10 +320,25 @@ def main():
     """Main function to demonstrate data collection."""
     collector = ExoplanetDataCollector()
     
-    # Fetch from all sources
-    collector.fetch_nasa_exoplanet_archive()
-    collector.fetch_eu_exoplanet_catalogue()
-    # collector.fetch_open_exoplanet_catalogue()  # Optional
+    # Try to fetch from all sources, fall back to demo data if needed
+    success = False
+    
+    # Try NASA
+    nasa_result = collector.fetch_nasa_exoplanet_archive()
+    if nasa_result is not None and len(nasa_result) > 0:
+        success = True
+    
+    # Try EU
+    eu_result = collector.fetch_eu_exoplanet_catalogue()
+    if eu_result is not None and len(eu_result) > 0:
+        success = True
+    
+    # If no data collected, use demo data
+    if not success:
+        print("\n" + "!"*70)
+        print("! No network access or API errors - using demo data instead")
+        print("!"*70 + "\n")
+        collector.load_demo_data()
     
     # Create unified dataset
     collector.create_unified_schema()
