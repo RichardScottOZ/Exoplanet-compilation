@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Exoplanet data files (generated outputs)
+exoplanet_combined_data.csv
+exoplanet_combined_data.json
+potentially_habitable_exoplanets.csv
+exoplanet_summary.csv
+
+# Visualization outputs
+*.html
+*.png
+!docs/*.png
+!docs/*.html
