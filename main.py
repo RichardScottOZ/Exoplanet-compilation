@@ -150,19 +150,15 @@ Examples:
     # Execute requested operations
     if args.stats:
         show_statistics(args.output)
-    
-    elif args.collect and args.visualize:
+    elif args.collect and not args.visualize:
+        # Only collect
         collect_data(args.output)
+    elif args.visualize and not args.collect:
+        # Only visualize
         generate_visualizations(args.output)
-    
-    elif args.all:
+    else:
+        # Both collect and visualize (covers --all and default)
         collect_data(args.output)
-        generate_visualizations(args.output)
-    
-    elif args.collect:
-        collect_data(args.output)
-    
-    elif args.visualize:
         generate_visualizations(args.output)
     
     print("\n✅ All done! Check the generated files for results.\n")

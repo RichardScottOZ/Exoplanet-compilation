@@ -62,10 +62,12 @@ def test_data_enrichment():
     
     # Check conversions
     jupiter_to_earth_radius = 11.209
-    assert enriched['planet_radius_earth'].iloc[0] == pytest.approx(
-        enriched['planet_radius_jupiter'].iloc[0] * jupiter_to_earth_radius, 
-        rel=0.01
-    ) if 'pytest' in sys.modules else True
+    first_radius_earth = enriched['planet_radius_earth'].iloc[0]
+    first_radius_jup = enriched['planet_radius_jupiter'].iloc[0]
+    expected = first_radius_jup * jupiter_to_earth_radius
+    # Simple numerical comparison with tolerance
+    assert abs(first_radius_earth - expected) < 0.01, \
+        f"Radius conversion failed: {first_radius_earth} != {expected}"
     
     # Check planet type classification
     types = enriched['planet_type'].unique()
@@ -99,14 +101,16 @@ def test_data_export():
     """Test data saving."""
     print("\nTesting data export...")
     import os
+    import tempfile
     
     collector = ExoplanetDataCollector()
     collector.load_demo_data()
     collector.create_unified_schema()
     collector.enrich_data()
     
-    # Save to temp file
-    test_file = '/tmp/test_exoplanet_data.csv'
+    # Save to temp file (cross-platform)
+    temp_dir = tempfile.gettempdir()
+    test_file = os.path.join(temp_dir, 'test_exoplanet_data.csv')
     collector.save_data(test_file)
     
     # Verify files exist
@@ -148,6 +152,7 @@ def test_end_to_end():
     """Test complete end-to-end workflow."""
     print("\nTesting end-to-end workflow...")
     import os
+    import tempfile
     
     # Full pipeline
     collector = ExoplanetDataCollector()
@@ -155,8 +160,9 @@ def test_end_to_end():
     collector.create_unified_schema()
     collector.enrich_data()
     
-    # Save data
-    test_file = '/tmp/test_e2e_data.csv'
+    # Save data (cross-platform temp dir)
+    temp_dir = tempfile.gettempdir()
+    test_file = os.path.join(temp_dir, 'test_e2e_data.csv')
     collector.save_data(test_file)
     
     # Load and visualize
