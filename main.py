@@ -24,27 +24,44 @@ def collect_data(output_file='exoplanet_combined_data.csv'):
     
     collector = ExoplanetDataCollector()
     
+    success = False
+    
     # Fetch from all sources
     print("Step 1: Fetching data from NASA Exoplanet Archive...")
-    collector.fetch_nasa_exoplanet_archive()
+    nasa_data = collector.fetch_nasa_exoplanet_archive()
+    if nasa_data is not None and len(nasa_data) > 0:
+        success = True
     
     print("\nStep 2: Fetching data from EU Exoplanet Catalogue...")
-    collector.fetch_eu_exoplanet_catalogue()
+    eu_data = collector.fetch_eu_exoplanet_catalogue()
+    if eu_data is not None and len(eu_data) > 0:
+        success = True
+    
+    # If no data collected, use demo data
+    if not success:
+        print("\n" + "!"*70)
+        print("! No network access or API errors - using demo data instead")
+        print("!"*70 + "\n")
+        print("Step 3: Loading demo data...")
+        collector.load_demo_data()
+        step_num = 4
+    else:
+        step_num = 3
     
     # Note: Uncomment to add more sources
     # print("\nStep 3: Fetching data from Open Exoplanet Catalogue...")
     # collector.fetch_open_exoplanet_catalogue()
     
-    print("\nStep 3: Creating unified schema...")
+    print(f"\nStep {step_num}: Creating unified schema...")
     collector.create_unified_schema()
     
-    print("\nStep 4: Enriching data with derived values...")
+    print(f"\nStep {step_num+1}: Enriching data with derived values...")
     collector.enrich_data()
     
-    print("\nStep 5: Saving data...")
+    print(f"\nStep {step_num+2}: Saving data...")
     collector.save_data(output_file)
     
-    print("\nStep 6: Generating statistics...")
+    print(f"\nStep {step_num+3}: Generating statistics...")
     collector.get_statistics()
     
     print("\n" + "="*70)
