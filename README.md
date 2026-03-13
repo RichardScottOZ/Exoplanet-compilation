@@ -46,8 +46,8 @@ This project integrates data from the following authoritative sources:
 git clone https://github.com/RichardScottOZ/Exoplanet-compilation.git
 cd Exoplanet-compilation
 
-# Install dependencies
-pip install -r requirements.txt
+# Install the package and its dependencies
+pip install .
 ```
 
 ### Basic Usage
@@ -55,7 +55,7 @@ pip install -r requirements.txt
 #### 1. Collect and Integrate Data
 
 ```python
-from exoplanet_data_sources import ExoplanetDataCollector
+from exoplanet_compilation import ExoplanetDataCollector
 
 # Initialize collector
 collector = ExoplanetDataCollector()
@@ -80,7 +80,7 @@ collector.save_data('exoplanet_combined_data.csv')
 #### 2. Create Visualizations
 
 ```python
-from exoplanet_visualizations import ExoplanetVisualizer
+from exoplanet_compilation import ExoplanetVisualizer
 import pandas as pd
 
 # Load data
@@ -242,7 +242,12 @@ python exoplanet_data_sources.py
 python exoplanet_visualizations.py
 ```
 
-### Example 3: Interactive Notebook
+### Example 3: Run the installed CLI
+```bash
+exoplanet-compilation --collect
+```
+
+### Example 4: Interactive Notebook
 ```bash
 jupyter notebook exoplanet_analysis.ipynb
 ```

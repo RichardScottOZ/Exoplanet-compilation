@@ -5,6 +5,7 @@ These tests validate basic functionality without requiring network access.
 """
 
 import sys
+import subprocess
 import pandas as pd
 import numpy as np
 from demo_data_generator import generate_demo_data
@@ -23,6 +24,27 @@ def test_demo_data_generation():
     assert data['planet_radius_jupiter'].notna().all(), "All planets should have radius"
     
     print("✓ Demo data generation works correctly")
+    return True
+
+
+def test_package_entrypoint():
+    """Test package imports and module entry point."""
+    print("\nTesting package entry point...")
+    import exoplanet_compilation
+
+    assert exoplanet_compilation.ExoplanetDataCollector.__name__ == "ExoplanetDataCollector"
+    assert exoplanet_compilation.ExoplanetVisualizer.__name__ == "ExoplanetVisualizer"
+
+    result = subprocess.run(
+        [sys.executable, "-m", "exoplanet_compilation", "--help"],
+        capture_output=True,
+        text=True,
+        check=False
+    )
+    assert result.returncode == 0, "Package module should expose a working CLI"
+    assert "Exoplanet Database Compilation" in result.stdout, "CLI help output should be shown"
+
+    print("✓ Package entry point works correctly")
     return True
 
 
@@ -189,6 +211,7 @@ def run_all_tests():
     
     tests = [
         test_demo_data_generation,
+        test_package_entrypoint,
         test_data_collection,
         test_data_enrichment,
         test_statistics,
