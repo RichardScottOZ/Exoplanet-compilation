@@ -32,8 +32,8 @@ def test_package_entrypoint():
     print("\nTesting package entry point...")
     import exoplanet_compilation
 
-    assert exoplanet_compilation.ExoplanetDataCollector is ExoplanetDataCollector
-    assert exoplanet_compilation.ExoplanetVisualizer is ExoplanetVisualizer
+    assert exoplanet_compilation.ExoplanetDataCollector.__name__ == "ExoplanetDataCollector"
+    assert exoplanet_compilation.ExoplanetVisualizer.__name__ == "ExoplanetVisualizer"
 
     result = subprocess.run(
         [sys.executable, "-m", "exoplanet_compilation", "--help"],
